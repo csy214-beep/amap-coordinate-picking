@@ -2,6 +2,11 @@
 
 这是一个基于Vue3和TypeScript的高德地图坐标拾取器，可以在地图上绘制多边形、矩形和圆形，并获取图形的角点坐标。
 
+## 来源
+
+本项目基于 **amap-coordinate-picking** 修改/发布，原作者为 **yilujian <!-- <1520406381@qq.com> -->**，原项目采用 MIT 许可证。
+[原仓库链接](https://github.com/jingjiupro/amap-coordinate-picking)（现已不可访问）
+
 ## 功能特性
 
 - 🗺️ 基于高德地图API的地图显示
@@ -42,6 +47,13 @@ export const MAP_CONFIG: MapConfig = {
 };
 ```
 
+或者在 `.env` 文件中添加 `VITE_AMAP_KEY` 变量
+
+```.env
+VITE_APP_API_KEY=your-api-key
+VITE_APP_MAP_SECURITY=your-map-security-js-code
+```
+
 ### 3. 安装依赖
 
 ```bash
@@ -77,6 +89,7 @@ pnpm build
 ### 地址搜索
 
 在页面顶部的搜索框中，您可以：
+
 - 输入地址、地点名称或POI进行搜索
 - 输入经纬度坐标（格式：经度,纬度）直接定位
 - 点击搜索结果跳转到对应位置
