@@ -148,6 +148,10 @@ amap-coordinate-picking/
 2. API密钥需要在高德开放平台进行域名白名单配置
 3. 建议在HTTPS环境下使用以确保安全性
 
+## 致谢
+
+本项目的原始代码来自 **amap-coordinate-picking**，感谢原作者的无私贡献。详见 [THANKS.md](./THANKS.md)。
+
 ## 许可证
 
 MIT License
