@@ -9,17 +9,18 @@
         <button id="drawCircle" class="btn btn-primary" :class="{ active: currentDrawMode === 'circle' }" @click="setDrawMode('circle')">绘制圆形</button>
         <button id="finishDrawing" class="btn btn-warning" @click="finishDrawing">完成绘制</button>
         <button id="clearAll" class="btn btn-danger" @click="clearAllShapes">清除所有</button>
-        
+
         <h3>坐标获取</h3>
         <button id="getClickCoordinates" class="btn btn-warning" :class="{ active: clickMode }" @click="toggleClickMode">{{ clickMode ? '退出点击模式' : '点击获取坐标' }}</button>
+        <button id="undoClickPoint" class="btn btn-secondary" @click="undoLastClickPoint" :disabled="clickPoints.length === 0">撤销最后一点</button>
         <button id="clearClickPoints" class="btn btn-secondary" @click="clearClickPoints">清除点击点</button>
         <button id="exportClickData" class="btn btn-secondary" @click="exportClickData">导出点击数据</button>
-        
+
         <h3>操作</h3>
         <button id="getCoordinates" class="btn btn-success" @click="getDrawCoordinates">获取绘制坐标</button>
         <button id="exportData" class="btn btn-info" @click="exportDrawData">导出绘制数据</button>
       </div>
-      
+
       <div class="coordinates-panel">
         <h3>点击坐标列表</h3>
         <div id="clickCoordinatesDisplay" class="coordinates-display">
@@ -30,7 +31,7 @@
             纬度: {{ point.lat.toFixed(6) }}
           </div>
         </div>
-        
+
         <h3>绘制图形坐标</h3>
         <div id="coordinatesDisplay" class="coordinates-display">
           <p v-if="!coordinatesDisplayHtml">点击"获取绘制坐标"按钮查看绘制图形的坐标信息</p>
@@ -38,7 +39,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="map-container">
       <AddressSearch @location-selected="handleLocationSelected" />
       <div id="map" class="map"></div>
@@ -55,7 +56,6 @@ import { MAP_CONFIG } from '../config/mapConfig';
 import type { DrawMode, Coordinate, DrawnShape, ShapeData } from '../types/map';
 import AddressSearch from './AddressSearch.vue';
 
-// 声明AMap全局变量
 declare global {
   interface Window {
     AMap: any;
@@ -68,7 +68,6 @@ export default defineComponent({
     AddressSearch
   },
   setup() {
-    // 状态变量
     const map = ref<any>(null);
     const currentDrawMode = ref<DrawMode>(null);
     const drawnShapes = ref<DrawnShape[]>([]);
@@ -81,7 +80,6 @@ export default defineComponent({
     const clickMarkers = ref<any[]>([]);
     const coordinatesDisplayHtml = ref<string>('');
 
-    // 初始化地图
     const initMap = () => {
       map.value = new window.AMap.Map('map', {
         zoom: MAP_CONFIG.MAP_OPTIONS.zoom,
@@ -89,7 +87,6 @@ export default defineComponent({
         mapStyle: MAP_CONFIG.MAP_OPTIONS.mapStyle
       });
 
-      // 正确加载控件（适配高德2.x）
       map.value.plugin(['AMap.ToolBar', 'AMap.Scale', 'AMap.ControlBar'], () => {
         map.value.addControl(new window.AMap.ToolBar());
         map.value.addControl(new window.AMap.Scale());
@@ -98,21 +95,17 @@ export default defineComponent({
 
       console.log('地图初始化完成');
 
-      // 地图点击事件
       map.value.on('click', (e: any) => {
         console.log('地图被点击', e.lnglat);
         handleMapClick(e);
       });
     };
 
-    // 处理位置选择（从地址搜索组件）
     const handleLocationSelected = (location: { lng: number; lat: number }) => {
       if (!map.value) return;
-      
-      // 平滑移动到选择的位置
+
       map.value.setZoomAndCenter(16, [location.lng, location.lat], false, 800);
-      
-      // 添加临时标记
+
       const marker = new window.AMap.Marker({
         position: [location.lng, location.lat],
         animation: 'AMAP_ANIMATION_DROP',
@@ -122,21 +115,18 @@ export default defineComponent({
           image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png'
         })
       });
-      
+
       map.value.add(marker);
-      
-      // 3秒后移除标记
+
       setTimeout(() => {
         map.value.remove(marker);
       }, 3000);
     };
 
-    // 切换点击获取坐标模式
     const toggleClickMode = () => {
       clickMode.value = !clickMode.value;
 
       if (clickMode.value) {
-        // 退出绘制模式
         clearDrawMode();
         console.log('进入点击获取坐标模式');
       } else {
@@ -144,7 +134,6 @@ export default defineComponent({
       }
     };
 
-    // 清除绘制模式
     const clearDrawMode = () => {
       clearTempShape();
       currentDrawMode.value = null;
@@ -152,12 +141,8 @@ export default defineComponent({
       tempPoints.value = [];
     };
 
-    // 设置绘制模式
     const setDrawMode = (mode: DrawMode) => {
-      // 退出点击模式
       clickMode.value = false;
-
-      // 清除之前的绘制状态
       clearTempShape();
       isDrawing.value = false;
       tempPoints.value = [];
@@ -167,15 +152,12 @@ export default defineComponent({
       console.log(`切换到${mode}绘制模式`);
     };
 
-    // 处理地图点击
     const handleMapClick = (e: any) => {
       const point = e.lnglat;
 
       if (clickMode.value) {
-        // 点击获取坐标模式
         addClickPoint(point);
       } else if (currentDrawMode.value) {
-        // 绘制模式
         tempPoints.value.push(point);
 
         if (currentDrawMode.value === 'polygon') {
@@ -190,11 +172,9 @@ export default defineComponent({
       }
     };
 
-    // 添加点击点
     const addClickPoint = (point: any) => {
       clickPoints.value.push(point);
 
-      // 创建标记
       const marker = new window.AMap.Marker({
         position: point,
         icon: new window.AMap.Icon({
@@ -210,7 +190,19 @@ export default defineComponent({
       console.log(`添加点击点 ${clickPoints.value.length}:`, point);
     };
 
-    // 清除点击点
+    const undoLastClickPoint = () => {
+      if (clickPoints.value.length === 0) return;
+
+      clickPoints.value.pop();
+
+      if (clickMarkers.value.length > 0) {
+        const marker = clickMarkers.value.pop();
+        map.value.remove(marker);
+      }
+
+      console.log('撤销最后一个点击点，当前点数:', clickPoints.value.length);
+    };
+
     const clearClickPoints = () => {
       clickMarkers.value.forEach(marker => {
         map.value.remove(marker);
@@ -220,7 +212,6 @@ export default defineComponent({
       console.log('清除所有点击点');
     };
 
-    // 导出点击数据
     const exportClickData = () => {
       if (clickPoints.value.length === 0) {
         alert('请先点击获取坐标！');
@@ -249,10 +240,8 @@ export default defineComponent({
       console.log('点击数据已导出：', exportData);
     };
 
-    // 绘制多边形
     const drawPolygon = (point: any) => {
       if (tempPoints.value.length === 1) {
-        // 第一个点，创建多边形
         tempShape.value = new window.AMap.Polygon({
           path: tempPoints.value,
           strokeColor: MAP_CONFIG.DRAW_STYLES.polygon.strokeColor,
@@ -260,23 +249,19 @@ export default defineComponent({
           fillColor: MAP_CONFIG.DRAW_STYLES.polygon.fillColor,
           fillOpacity: MAP_CONFIG.DRAW_STYLES.temp.fillOpacity,
           strokeStyle: MAP_CONFIG.DRAW_STYLES.temp.strokeStyle,
-          bubble: true,        // 允许事件冒泡
-          clickable: false     // 不拦截点击
+          bubble: true,
+          clickable: false
         });
         map.value.add(tempShape.value);
       } else {
-        // 更新多边形路径
         tempShape.value.setPath(tempPoints.value);
       }
 
-      // 添加临时标记点
       addTempMarker(point);
     };
 
-    // 绘制矩形
     const drawRectangle = (point: any) => {
       if (tempPoints.value.length === 1) {
-        // 第一个点，创建矩形
         tempShape.value = new window.AMap.Rectangle({
           bounds: new window.AMap.Bounds(point, point),
           strokeColor: MAP_CONFIG.DRAW_STYLES.rectangle.strokeColor,
@@ -287,20 +272,16 @@ export default defineComponent({
         });
         map.value.add(tempShape.value);
       } else if (tempPoints.value.length === 2) {
-        // 第二个点，完成矩形
         const bounds = new window.AMap.Bounds(tempPoints.value[0], tempPoints.value[1]);
         tempShape.value.setBounds(bounds);
         finishDrawing();
       }
 
-      // 添加临时标记点
       addTempMarker(point);
     };
 
-    // 绘制圆形
     const drawCircle = (point: any) => {
       if (tempPoints.value.length === 1) {
-        // 第一个点，创建圆形
         tempShape.value = new window.AMap.Circle({
           center: point,
           radius: 0,
@@ -312,17 +293,14 @@ export default defineComponent({
         });
         map.value.add(tempShape.value);
       } else if (tempPoints.value.length === 2) {
-        // 第二个点，计算半径并完成圆形
         const radius = tempPoints.value[0].distance(tempPoints.value[1]);
         tempShape.value.setRadius(radius);
         finishDrawing();
       }
 
-      // 添加临时标记点
       addTempMarker(point);
     };
 
-    // 添加临时标记点
     const addTempMarker = (point: any) => {
       const marker = new window.AMap.Marker({
         position: point,
@@ -336,13 +314,11 @@ export default defineComponent({
       tempMarkers.value.push(marker);
     };
 
-    // 完成绘制
     const finishDrawing = () => {
       if (!tempShape.value || tempPoints.value.length < 2) {
         return;
       }
 
-      // 创建最终的图形
       let finalShape;
       const shapeData: ShapeData = {
         type: currentDrawMode.value as string,
@@ -367,8 +343,7 @@ export default defineComponent({
           fillColor: MAP_CONFIG.DRAW_STYLES.rectangle.fillColor,
           fillOpacity: MAP_CONFIG.DRAW_STYLES.rectangle.fillOpacity
         });
-        
-        // 获取矩形的四个角点
+
         shapeData.coordinates = [
           { lng: bounds.getSouthWest().lng, lat: bounds.getSouthWest().lat },
           { lng: bounds.getNorthEast().lng, lat: bounds.getSouthWest().lat },
@@ -385,11 +360,9 @@ export default defineComponent({
           fillColor: MAP_CONFIG.DRAW_STYLES.circle.fillColor,
           fillOpacity: MAP_CONFIG.DRAW_STYLES.circle.fillOpacity
         });
-        // 计算圆形的边界点
         shapeData.coordinates = calculateCirclePoints(tempPoints.value[0], radius);
       }
 
-      // 添加到地图和存储
       map.value.add(finalShape);
       drawnShapes.value.push({
         shape: finalShape,
@@ -397,16 +370,14 @@ export default defineComponent({
       });
       console.log('当前drawnShapes:', drawnShapes.value);
 
-      // 清除临时图形和标记
       clearTempShape();
 
       console.log(`完成绘制${currentDrawMode.value}，坐标：`, shapeData.coordinates);
     };
 
-    // 计算圆形边界点
     const calculateCirclePoints = (center: any, radius: number): Coordinate[] => {
       const points: Coordinate[] = [];
-      const segments = MAP_CONFIG.CIRCLE_SEGMENTS; // 32个点近似圆形
+      const segments = MAP_CONFIG.CIRCLE_SEGMENTS;
 
       for (let i = 0; i < segments; i++) {
         const angle = (i / segments) * 2 * Math.PI;
@@ -418,7 +389,6 @@ export default defineComponent({
       return points;
     };
 
-    // 清除临时图形
     const clearTempShape = () => {
       if (tempShape.value) {
         map.value.remove(tempShape.value);
@@ -436,16 +406,13 @@ export default defineComponent({
       isDrawing.value = false;
     };
 
-    // 撤销上一个点
     const undoLastPoint = () => {
       if (!currentDrawMode.value || tempPoints.value.length === 0) return;
       tempPoints.value.pop();
-      // 移除最后一个临时标记点
       if (tempMarkers.value.length > 0) {
         const marker = tempMarkers.value.pop();
         map.value.remove(marker);
       }
-      // 更新临时图形
       if (currentDrawMode.value === 'polygon' && tempShape.value) {
         if (tempPoints.value.length > 0) {
           tempShape.value.setPath(tempPoints.value);
@@ -470,7 +437,6 @@ export default defineComponent({
       }
     };
 
-    // 清除所有图形
     const clearAllShapes = () => {
       clearTempShape();
 
@@ -481,11 +447,9 @@ export default defineComponent({
 
       currentDrawMode.value = null;
 
-      // 清空坐标显示
       coordinatesDisplayHtml.value = '';
     };
 
-    // 获取绘制坐标信息
     const getDrawCoordinates = () => {
       if (drawnShapes.value.length === 0) {
         alert('请先绘制图形！');
@@ -510,7 +474,6 @@ export default defineComponent({
       console.log('获取绘制坐标，当前drawnShapes:', drawnShapes.value);
     };
 
-    // 导出绘制数据
     const exportDrawData = () => {
       if (drawnShapes.value.length === 0) {
         alert('请先绘制图形！');
@@ -534,32 +497,30 @@ export default defineComponent({
       console.log('绘制数据已导出：', exportData);
     };
 
-    // 键盘事件处理
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
-        undoLastPoint();
+        if (clickMode.value) {
+          undoLastClickPoint();
+        } else {
+          undoLastPoint();
+        }
       }
     };
 
-    // 生命周期钩子
     onMounted(() => {
       console.log('页面加载完成，开始初始化地图绘制工具');
-      // 确保AMap已加载
       if (window.AMap) {
         initMap();
       } else {
         console.error('AMap未加载，请确保引入了高德地图API');
       }
 
-      // 添加键盘事件监听
       document.addEventListener('keydown', handleKeyDown);
     });
 
     onBeforeUnmount(() => {
-      // 清理事件监听
       document.removeEventListener('keydown', handleKeyDown);
-      
-      // 清理地图实例
+
       if (map.value) {
         map.value.destroy();
       }
@@ -572,6 +533,7 @@ export default defineComponent({
       coordinatesDisplayHtml,
       setDrawMode,
       toggleClickMode,
+      undoLastClickPoint,
       clearClickPoints,
       exportClickData,
       finishDrawing,
@@ -586,4 +548,4 @@ export default defineComponent({
 
 <style scoped>
 @import '../assets/map-styles.css';
-</style> 
+</style>
